@@ -1,0 +1,7 @@
+*.xls;xlsx;csv
+*.json
+.idea/
+venv/
+__pycache__/
+schedule.xls
+schedule.xlsx

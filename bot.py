@@ -3,12 +3,30 @@ import threading
 import time
 from update import update_schedules, days
 import datetime
+import json
 
 
 # Создаем экземпляр бота
-bot = telebot.TeleBot('5600930557:AAErz9Erf1tDF4vixQNaEWP3tJ-bFfNwHt8')
+bot = telebot.TeleBot(input('Введите токен бота:\n'))
 users = {}
 admin_chat_id = 228041096
+users_filename = "users.json"
+
+
+def upload_users():
+    global users
+    with open(users_filename, 'r') as f:
+        data = f.read()
+        try:
+            users = json.loads(data)
+        except:
+            print("Trouble with reading users")
+            users = {}
+
+
+def save_users():
+    with open(users_filename, 'w') as f:
+        f.write(json.dumps(users))
 
 
 @bot.message_handler(commands=['report'])
@@ -34,8 +52,10 @@ def set_group(m):
         bot.send_message(m.chat.id, f'Пожалуйста, введите корректное название группы')
         return
     if m.chat.id not in users.keys():
-        print(f"New user joined!!!\n{m.from_user.username}")
+        print(f"New user joined!!!\nusername: {m.from_user.username}, id: {m.from_user.id}")
+
     users[m.chat.id] = parts[1]
+    save_users()
     bot.send_message(m.chat.id, f'Вы задали группу: {parts[1]}')
 
 
@@ -77,6 +97,7 @@ def everyday_update():
     print(f"finished updating - next update in {delay // 60} minutes")
 
 
+upload_users()
 bot_thread = threading.Thread(target=bot.polling, kwargs={'none_stop': True, 'interval': 0})
 bot_thread.start()
 everyday_update()
