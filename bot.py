@@ -4,6 +4,7 @@ import time
 from update import update_schedules, days
 import datetime
 import json
+import os
 
 
 # Создаем экземпляр бота
@@ -15,10 +16,14 @@ users_filename = "users.json"
 
 def upload_users():
     global users
+    if not os.path.exists(users_filename):
+        users = {}
+        return
     with open(users_filename, 'r') as f:
         data = f.read()
         try:
-            users = json.loads(data)
+            users_str = json.loads(data)
+            users = {int(key): value for key, value in users_str.items()}
         except:
             print("Trouble with reading users")
             users = {}
@@ -39,7 +44,17 @@ def report(m):
 def start(m):
     bot.send_message(m.chat.id, f'''Привет, {m.from_user.first_name}! 
 Я бот с расписанием МФТИ. Пока расписание работает только для первого курса
-Напиши /setgroup <твоя группа> без кавычек, чтобы тебе приходила актуальная информация о приближающихся парах''')
+Напиши /setgroup <твоя группа> без кавычек, чтобы тебе приходила актуальная информация о приближающихся парах
+Можешь написать /info, чтобы узнать, в какой группе ты зарегистрирован в боте''')
+
+
+@bot.message_handler(commands=['info'])
+def info(m):
+    if m.chat.id in users.keys():
+        bot.send_message(m.chat.id, f'Вы отслеживаете группу {users[m.chat.id]}')
+    else:
+        bot.send_message(m.chat.id, '''Пока вы не отслеживаете никакую группу(
+Напишите /setgroup <ваша группа> без кавычек, чтобы получать уведомления о приближающихся парах''')
 
 
 @bot.message_handler(commands=["setgroup"])
@@ -98,6 +113,7 @@ def everyday_update():
 
 
 upload_users()
+print(users)
 bot_thread = threading.Thread(target=bot.polling, kwargs={'none_stop': True, 'interval': 0})
 bot_thread.start()
 everyday_update()
