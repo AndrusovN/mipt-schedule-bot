@@ -111,7 +111,6 @@ def easter_egg(m):
 def notify(group_name, timestamp, lesson):
     users_lock.acquire()
     for user in users.keys():
-        print(user, users[user], group_name, users[user] == group_name)
         if users[user] == group_name:
             bot.send_message(user, f"В {timestamp} начинается занятие:\n\n{lesson}")
     users_lock.release()
@@ -132,8 +131,6 @@ def everyday_update():
             daytime = today_str + lesson[0] + ":00"
             runtime = datetime.datetime.strptime(daytime, "%Y-%m-%d %H:%M:%S")
             delay = (runtime - now).total_seconds() - 15*60 - i
-            if group == 'Б05-228':
-                print(delay)
             if delay > 0:
                 threading.Timer(delay, notify, (group, lesson[0], lesson[1])).start()
     next_update = str(datetime.date.today() + datetime.timedelta(days=1))[:10] + " 08:30:00"
