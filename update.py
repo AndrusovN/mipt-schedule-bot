@@ -31,7 +31,7 @@ def make_schedule(group_name, hours, lessons):
             schedule[days[id]] = current
             current = []
             id += 1
-        if type(item[1]) == str:
+        if type(item[1]) == str and len(item[1]) > 0:
             current.append(item)
     schedule[days[id]] = current
     return schedule

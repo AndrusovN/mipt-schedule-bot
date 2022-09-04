@@ -80,39 +80,48 @@ def info(m):
 @bot.message_handler(commands=["setgroup"])
 def set_group(m):
     parts = m.text.split(' ')
-    if len(parts) != 2:
-        bot.send_message(m.chat.id, f'Пожалуйста, после команды введите название группы в том же сообщении')
-        return
-    if not re.match(group_name_pattern, parts[1]):
-        bot.send_message(m.chat.id, f'Название группы должно быть вида БXY-PQR')
-        return
-    print("going to save")
-    users_lock.acquire()
-    if m.chat.id not in users.keys():
-        print(f"New user joined!!!\nusername: {m.from_user.username}, id: {m.from_user.id}")
+    try:
+        if len(parts) != 2:
+            bot.send_message(m.chat.id, f'Пожалуйста, после команды введите название группы в том же сообщении')
+            return
+        if not re.match(group_name_pattern, parts[1]):
+            bot.send_message(m.chat.id, f'Название группы должно быть вида БXY-PQR')
+            return
+        print("going to save")
+        users_lock.acquire()
+        if m.chat.id not in users.keys():
+            print(f"New user joined!!!\nusername: {m.from_user.username}, id: {m.from_user.id}")
 
-    users[m.chat.id] = parts[1]
+        users[m.chat.id] = parts[1]
 
-    users_lock.release()
-    save_users()
-    print("saved")
-    bot.send_message(m.chat.id, f'Вы задали группу: {parts[1]}')
+        users_lock.release()
+        save_users()
+        print("saved")
+        bot.send_message(m.chat.id, f'Вы задали группу: {parts[1]}')
+    except Exception as e:
+        print(f"Trouble in setting group for {m.chat.id} group {parts} exception {str(e)}")
 
 
 @bot.message_handler(content_types=['text'])
 def easter_egg(m):
-    if m.text == 'РТ':
-        bot.send_message(m.chat.id, 'РТ!!!\n\n'*20)
-    else:
-        bot.send_message(m.chat.id, '''Прости, я пока не умею отвечать на такой запрос(
+    try:
+        if m.text == 'РТ':
+            bot.send_message(m.chat.id, 'РТ!!!\n\n'*20)
+        else:
+            bot.send_message(m.chat.id, '''Прости, я пока не умею отвечать на такой запрос(
 Если ты считаешь, что в работе бота что-то не так, то напиши команду /report <описание проблемы> без кавычек''')
+    except Exception as e:
+        print(f"Unable to send message to user {m.chat.id} because of {str(e)}")
 
 
 def notify(group_name, timestamp, lesson):
     users_lock.acquire()
     for user in users.keys():
         if users[user] == group_name:
-            bot.send_message(user, f"В {timestamp} начинается занятие:\n\n{lesson}")
+            try:
+                bot.send_message(user, f"В {timestamp} начинается занятие:\n\n{lesson}")
+            except Exception as e:
+                print(f"Unable to send message to user {user} because of {str(e)}")
     users_lock.release()
 
 
