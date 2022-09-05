@@ -17,6 +17,11 @@ def remake_hours(hours):
     return hours
 
 
+def verify_lesson(lesson):
+    return type(lesson) == str and len(lesson) > 0 and \
+           "Занятия будут проводиться в г. Москве, м. Тимирязевская" not in lesson
+
+
 def make_schedule(group_name, hours, lessons):
     pairs = []
     for i in range(min(len(hours), len(lessons[group_name]))):
@@ -31,7 +36,7 @@ def make_schedule(group_name, hours, lessons):
             schedule[days[id]] = current
             current = []
             id += 1
-        if type(item[1]) == str and len(item[1]) > 0:
+        if verify_lesson(item[1]):
             current.append(item)
     schedule[days[id]] = current
     return schedule
@@ -45,8 +50,6 @@ def receive_excel_file():
 
     if os.path.exists(filename):
         os.remove(filename)
-    else:
-        print("The file does not exist")
 
     urllib.request.urlretrieve("https://mipt.ru" + ref, filename)
 
@@ -56,7 +59,6 @@ def read_excel_file():
     xl = xlrd.open_workbook(filename, formatting_info=True)
     FirstSheet = xl.sheet_by_index(0)
     for crange in FirstSheet.merged_cells:
-        # print("there")
         rlo, rhi, clo, chi = crange
         for rowx in range(rlo, rhi):
             for colx in range(clo, chi):

@@ -14,7 +14,16 @@ users = {}
 admin_chat_id = 228041096
 users_filename = "users.json"
 users_lock = threading.Lock()
+logs_lock = threading.Lock()
 group_name_pattern = re.compile("Б[0-9][0-9]-[0-9][0-9][0-9]$")
+
+
+def log(data):
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logs_lock.acquire()
+    with open('logs.txt', 'a') as f:
+        f.write(timestamp + " " + str(data) + '\n')
+    logs_lock.release()
 
 
 def upload_users():
@@ -30,7 +39,7 @@ def upload_users():
             users_str = json.loads(data)
             users = {int(key): value for key, value in users_str.items()}
         except:
-            print("Trouble with reading users")
+            log("Trouble with reading users")
             users = {}
     users_lock.release()
 
@@ -87,19 +96,19 @@ def set_group(m):
         if not re.match(group_name_pattern, parts[1]):
             bot.send_message(m.chat.id, f'Название группы должно быть вида БXY-PQR')
             return
-        print("going to save")
+        log("going to save")
         users_lock.acquire()
         if m.chat.id not in users.keys():
-            print(f"New user joined!!!\nusername: {m.from_user.username}, id: {m.from_user.id}")
+            log(f"New user joined!!!\nusername: {m.from_user.username}, id: {m.from_user.id}")
 
         users[m.chat.id] = parts[1]
 
         users_lock.release()
         save_users()
-        print("saved")
+        log("saved")
         bot.send_message(m.chat.id, f'Вы задали группу: {parts[1]}')
     except Exception as e:
-        print(f"Trouble in setting group for {m.chat.id} group {parts} exception {str(e)}")
+        log(f"Trouble in setting group for {m.chat.id} group {parts} exception {str(e)}")
 
 
 @bot.message_handler(content_types=['text'])
@@ -111,7 +120,7 @@ def easter_egg(m):
             bot.send_message(m.chat.id, '''Прости, я пока не умею отвечать на такой запрос(
 Если ты считаешь, что в работе бота что-то не так, то напиши команду /report <описание проблемы> без кавычек''')
     except Exception as e:
-        print(f"Unable to send message to user {m.chat.id} because of {str(e)}")
+        log(f"Unable to send message to user {m.chat.id} because of {str(e)}")
 
 
 def notify(group_name, timestamp, lesson):
@@ -121,15 +130,15 @@ def notify(group_name, timestamp, lesson):
             try:
                 bot.send_message(user, f"В {timestamp} начинается занятие:\n\n{lesson}")
             except Exception as e:
-                print(f"Unable to send message to user {user} because of {str(e)}")
+                log(f"Unable to send message to user {user} because of {str(e)}")
     users_lock.release()
 
 
 def everyday_update():
     users_lock.acquire()
-    print("updating")
+    log("updating")
     today_schedule = update_schedules()
-    print("schedule received")
+    log("schedule received")
     today = datetime.date.today().weekday()
     today = days[today - 5]
     now = datetime.datetime.now()
@@ -147,14 +156,15 @@ def everyday_update():
     delay = (next_update - datetime.datetime.now()).total_seconds()
     threading.Timer(delay, everyday_update).start()
     users_lock.release()
-    print(f"finished updating - next update in {delay // 60} minutes")
+    log(f"finished updating - next update in {delay // 60} minutes")
 
 
 upload_users()
-print(users)
+log(users)
 bot_thread = threading.Thread(target=bot.polling, kwargs={'none_stop': True, 'interval': 0})
 bot_thread.start()
 everyday_update()
-print("Success")
+log("Success")
+print("bot is started")
 while True:
     time.sleep(1)
