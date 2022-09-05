@@ -140,7 +140,7 @@ def everyday_update():
     today_schedule = update_schedules()
     log("schedule received")
     today = datetime.date.today().weekday()
-    today = days[today - 5]
+    today = days[today]
     now = datetime.datetime.now()
     today_str = str(datetime.date.today())[:10] + ' '
     for i, group in enumerate(today_schedule.keys()):
