@@ -28,9 +28,10 @@ def verify_lesson(lesson):
 
 
 def make_schedule(group_name, hours, lessons):
+
     pairs = []
     for i in range(min(len(hours), len(lessons[group_name]))):
-        if type(hours[i]) == str:
+        if type(hours[i]) == str and 'возможны изменения' not in hours[i]:
             pairs.append((hours[i], lessons[group_name][i]))
 
     schedule = {}
@@ -80,9 +81,13 @@ def read_excel_file():
 
 
 def parse_lesson_hours():
-    df = pd.read_excel(io="schedule.xls", sheet_name='6 курс')
+    df = pd.read_excel(io="schedule.xls")
     df.columns = df.iloc[3]
-    hours = df['Часы'].iloc[:, 0].tolist()
+    hours = None
+    try:
+        hours = df['Часы'].iloc[:, 0].tolist()
+    except:
+        hours = df['Часы'].tolist()
     hours = hours[4:]
 
     return [remake_hours(x) for x in hours]
@@ -91,22 +96,22 @@ def parse_lesson_hours():
 def update_schedules():
     group_names = []
     lessons = {}
+    schedules = {}
     for sheet in sheetnames:
         receive_excel_file(sheet)
 
         df = read_excel_file()
 
         titles = df.columns.tolist()
-        current_group_names = list(filter(lambda x: type(x) == str and (x[0] == 'Б' or x[0] == 'М' or x[0] == 'С')
+        current_group_names = list(filter(lambda x: type(x) == str and (x[0] == 'Б' or x[0] == 'М')
                                                     and titles.count(x) == 1, df.columns.tolist()))
-        print(current_group_names)
-        print(len(current_group_names))
-        print(len(set(current_group_names)))
+
         current_lessons = {group_name: df[group_name].tolist()[4:] for group_name in current_group_names}
         group_names = group_names + current_group_names
         lessons = {**lessons, **current_lessons}
 
-    hours = parse_lesson_hours()
+        hours = parse_lesson_hours()
 
-    schedules = {group_name: make_schedule(group_name, hours, lessons) for group_name in group_names}
+        current_schedules = {group_name: make_schedule(group_name, hours, lessons) for group_name in current_group_names}
+        schedules = {**schedules, **current_schedules}
     return schedules
