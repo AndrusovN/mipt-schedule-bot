@@ -10,6 +10,7 @@ import re
 
 # Создаем экземпляр бота
 bot = telebot.TeleBot(input('Введите токен бота:\n'))
+today_schedule = {}
 users = {}
 admin_chat_id = 228041096
 users_filename = "users.json"
@@ -60,10 +61,29 @@ def report(m):
 @bot.message_handler(commands=["start"])
 def start(m):
     bot.send_message(m.chat.id, f'''Привет, {m.from_user.first_name}! 
-Я бот с расписанием МФТИ. Пока расписание работает только для первого курса
+Я бот с расписанием МФТИ. Расписание работает для всех групп как бакалавриата, так и магистратуры!
 Напиши /setgroup <твоя группа> без кавычек, чтобы тебе приходила актуальная информация о приближающихся парах
 Можешь написать /info, чтобы узнать, в какой группе ты зарегистрирован в боте
+Чтобы посмотреть расписание на сегодня, напиши /rasp
 Чтобы отписаться от уведомлений, напиши /unsubscribe''')
+
+
+@bot.message_handler(commands=['notify_all'])
+def notify_all(m):
+    if m.chat.id != admin_chat_id:
+        try:
+            bot.send_message(m.chat.id, "Только админ может выполнить эту команду!")
+        except Exception as e:
+            log(f"Cannot send message to user {m.chat.id} because of {str(e)}")
+        return
+    users_lock.acquire()
+    message = m.text[12:]
+    for user in users.keys():
+        try:
+            bot.send_message(user, message)
+        except Exception as e:
+            log(f"Cannot send message to user {user} because of {(str(e))}")
+    users_lock.release()
 
 
 @bot.message_handler(commands=['unsubscribe'])
@@ -72,6 +92,43 @@ def unsubscribe(m):
     if m.chat.id in users.keys():
         users.pop(m.chat.id)
     bot.send_message(m.chat.id, 'Теперь вы не будете получать уведомления(')
+    users_lock.release()
+
+
+def prepare_beautiful_schedule(schedule):
+    pairs = []
+    for lesson in schedule:
+        lesson_time = lesson[0].split(":")
+        lesson_time = int(lesson_time[0])*60 + int(lesson_time[1])
+        pairs.append((lesson_time, lesson[0] + " - " + lesson[1]))
+    pairs = sorted(pairs, key=lambda x: x[0])
+    pairs = [lesson[1] for lesson in pairs]
+    return '\n\n'.join(pairs)
+
+
+@bot.message_handler(commands=['rasp'])
+def get_schedule(m):
+    users_lock.acquire()
+    if m.chat.id not in users.keys():
+        try:
+            bot.send_message(m.chat.id, "Сначала задайте группу с помощью команды /setgroup <ваша группа>")
+        except Exception as e:
+            log(f"Unable to send message to user {m.chat.id} because of {str(e)}")
+        users_lock.release()
+        return
+    try:
+        group_name = users[m.chat.id]
+        if group_name not in today_schedule.keys():
+            bot.send_message(m.chat.id, f"Не удалось найти вашу группу {group_name}")
+            users_lock.release()
+            return
+        group_schedule = today_schedule[group_name]
+        today = datetime.date.today().weekday()
+        today = days[today]
+        schedule_text = prepare_beautiful_schedule(group_schedule[today])
+        bot.send_message(m.chat.id, schedule_text)
+    except Exception as e:
+        log(f"Trouble with sending message to {m.chat.id}: {str(e)}")
     users_lock.release()
 
 
@@ -137,6 +194,7 @@ def notify(group_name, timestamp, lesson):
 def everyday_update():
     users_lock.acquire()
     log("updating")
+    global today_schedule
     today_schedule = update_schedules()
     log("schedule received")
     today = datetime.date.today().weekday()
